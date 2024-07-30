@@ -1,4 +1,10 @@
-from typing import Any
+# Sliding
+# Cubes or other objects
+# Turrets
+# Portals
+# Wall jump?
+
+
 import pygame as pyg
 
 pyg.init()
@@ -7,13 +13,16 @@ screen = pyg.display.set_mode((width, height))
 clock = pyg.time.Clock()
 
 # Constants
-playerPos = [600,400]
+playerPos = [600,200]
 playerVel = [0,0]
 playerSize = 15
+playerSpeed= 1
 
-gravityConstant = .1
+gravityConstant = .05
 gameMap = []
 debugObjs = []
+
+keys = [False,False,False]
 
 # Handler functions
 def dist(p1,p2):
@@ -45,7 +54,7 @@ class Wall():
         pyg.draw.rect(screen,self.color,pyg.Rect(self.left,self.top,self.width,self.height),width=self.lineWidth)
 
 
-testWall = Wall(0,750,1200,50)
+testWall = Wall(500,300,150,150)
 gameMap.append(testWall)
 
 # Secondary functions
@@ -61,26 +70,64 @@ def drawPlayer():
     global playerPos,playerVel,playerSize
 
     # Handles gravity
-    playerVel[1]+=gravityConstant
+    if playerVel[1]<10:
+        playerVel[1]+=gravityConstant
 
     # Handles velocity
     playerPos[0]+=playerVel[0]
     playerPos[1]+=playerVel[1]
 
+    #Handles movement
+    if keys[0]:
+        playerPos[1]-=playerSpeed*4
+    if keys[1]:
+        playerPos[0]-=playerSpeed
+    if keys[2]:
+        playerPos[0]+=playerSpeed
+
+    predictedPos = [playerPos[0]+playerVel[0],playerPos[1]+playerVel[1]]
+
     for block in gameMap:
-        closestPoint = (max(0,min(playerPos[0]-block.left,block.width)), block.top-playerPos[1])
+        closestPoint = (block.left+max(0,min(playerPos[0]-block.left,block.width)), block.top+max(0,min(playerPos[1]-block.top,block.height)))
         pyg.draw.circle(screen, (255,0,0), closestPoint, 5,width=0)
-        #if dist(closestPoint,playerPos)<playerSize:
-            
+        if dist(closestPoint,playerPos)<playerSize:
+            #playerVel=list(map(lambda x:-x*dampen,playerVel))
+            playerVel=[0,0]
+
+            #-+
+            if block.left<=closestPoint[0]<=block.center[0] and block.top<=closestPoint[1]<=block.center[1]:
+                playerPos=[playerPos[0],block.top-playerSize] if closestPoint[0]-block.left>=closestPoint[1]-block.top else [block.left-playerSize,playerPos[1]]
+            #++
+            elif block.center[0]<=closestPoint[0]<=block.left+block.width and block.top<=closestPoint[1]<=block.center[1]:
+                playerPos=[playerPos[0],block.top-playerSize] if closestPoint[0]-block.center[0]>=block.center[1]-closestPoint[1]
+                #if closestPoint[0]-block.center[0]>=block.center[1]-closestPoint[1] else [block.left+block.width+playerSize,playerPos[1]]
 
     pyg.draw.circle(screen, (255,255,255), playerPos, playerSize,width=1)
-    
+
+def manageKeys(event):
+    if event.type==pyg.KEYDOWN:
+        if event.key == pyg.K_w:
+            keys[0]=True
+        if event.key == pyg.K_a:
+            keys[1]=True
+        if event.key == pyg.K_d:
+            keys[2]=True
+    if event.type==pyg.KEYUP:
+        if event.key == pyg.K_w:
+            keys[0]=False
+        if event.key == pyg.K_a:
+            keys[1]=False
+        if event.key == pyg.K_d:
+            keys[2]=False
 
 while True:
     screen.fill((0,0,0))
+    mousePos = pyg.mouse.get_pos()
     for event in pyg.event.get():
         if event.type == pyg.QUIT:
             exit()
+        manageKeys(event)
+
 
     drawPlayer()
     drawMap()
