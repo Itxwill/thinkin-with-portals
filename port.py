@@ -17,10 +17,13 @@ playerPos = [600,200]
 playerVel = [0,0]
 playerSize = 15
 playerSpeed= 1
+playerAir = True
 
 gravityConstant = .05
 gameMap = []
 debugObjs = []
+
+debugMode = False
 
 keys = [False,False,False]
 
@@ -67,7 +70,7 @@ def drawDebug():
         deco.draw()
 
 def drawPlayer():
-    global playerPos,playerVel,playerSize
+    global playerPos,playerVel,playerSize,playerAir
 
     # Handles gravity
     if playerVel[1]<10:
@@ -78,33 +81,56 @@ def drawPlayer():
     playerPos[1]+=playerVel[1]
 
     #Handles movement
-    if keys[0]:
-        playerPos[1]-=playerSpeed*4
+    if keys[0] and not playerAir:
+        playerVel[1]=-3.5
+        playerAir=True
     if keys[1]:
         playerPos[0]-=playerSpeed
     if keys[2]:
         playerPos[0]+=playerSpeed
 
+
     predictedPos = [playerPos[0]+playerVel[0],playerPos[1]+playerVel[1]]
 
+
+    #Block collisions
     for block in gameMap:
-        closestPoint = (block.left+max(0,min(playerPos[0]-block.left,block.width)), block.top+max(0,min(playerPos[1]-block.top,block.height)))
-        pyg.draw.circle(screen, (255,0,0), closestPoint, 5,width=0)
-        if dist(closestPoint,playerPos)<playerSize:
+        closestPoint = (block.left+max(0,min(predictedPos[0]-block.left,block.width)), block.top+max(0,min(predictedPos[1]-block.top,block.height)))
+        #pyg.draw.circle(screen, (255,0,0), closestPoint, 5,width=0)
+        if dist(closestPoint,predictedPos)<playerSize:
             #playerVel=list(map(lambda x:-x*dampen,playerVel))
             playerVel=[0,0]
 
             #-+
             if block.left<=closestPoint[0]<=block.center[0] and block.top<=closestPoint[1]<=block.center[1]:
                 playerPos=[playerPos[0],block.top-playerSize] if closestPoint[0]-block.left>=closestPoint[1]-block.top else [block.left-playerSize,playerPos[1]]
+                playerAir=False
+
             #++
             elif block.center[0]<=closestPoint[0]<=block.left+block.width and block.top<=closestPoint[1]<=block.center[1]:
-                playerPos=[playerPos[0],block.top-playerSize] if closestPoint[0]-block.center[0]>=block.center[1]-closestPoint[1]
-                #if closestPoint[0]-block.center[0]>=block.center[1]-closestPoint[1] else [block.left+block.width+playerSize,playerPos[1]]
+                playerPos=[playerPos[0],block.top-playerSize] if closestPoint[0]-block.center[0]<=block.center[1]-closestPoint[1] else [block.left+block.width+playerSize,playerPos[1]]
+                playerAir=False
+            #+-
 
+            elif block.center[0]<=closestPoint[0]<=block.left+block.width and block.center[1]<=closestPoint[1]<=block.top+block.height:
+                playerPos=[playerPos[0],block.top+block.height+playerSize] if closestPoint[0]-block.center[0]<=closestPoint[1]-block.center[1] else [block.left+block.width+playerSize,playerPos[1]]
+                # playerAir=False
+            #--
+            elif block.left<=closestPoint[0]<=block.center[0] and block.center[1]<=closestPoint[1]<=block.top+block.height:
+                print(block.center[0]-closestPoint[0],closestPoint[1]-block.center[1])
+                playerPos=[playerPos[0],block.top+block.height+playerSize] if block.center[0]-closestPoint[0]<=closestPoint[1]-block.center[1] else [block.left-playerSize,playerPos[1]]
+
+                if block.center[0]-closestPoint[0]<=block.center[1]-closestPoint[1]:
+                    print('from up')
+                else:
+                    print('from side')
+                # playerAir=False
+    
+    # Render the player
     pyg.draw.circle(screen, (255,255,255), playerPos, playerSize,width=1)
 
 def manageKeys(event):
+    global playerPos,playerAir
     if event.type==pyg.KEYDOWN:
         if event.key == pyg.K_w:
             keys[0]=True
@@ -112,6 +138,7 @@ def manageKeys(event):
             keys[1]=True
         if event.key == pyg.K_d:
             keys[2]=True
+
     if event.type==pyg.KEYUP:
         if event.key == pyg.K_w:
             keys[0]=False
@@ -123,11 +150,22 @@ def manageKeys(event):
 while True:
     screen.fill((0,0,0))
     mousePos = pyg.mouse.get_pos()
+    mouseState = pyg.mouse.get_pressed()
+
     for event in pyg.event.get():
         if event.type == pyg.QUIT:
             exit()
-        manageKeys(event)
 
+        if event.type==pyg.KEYDOWN:
+            if event.key==pyg.K_f:
+                place = mousePos
+                print('gg')
+            if event.key==pyg.K_g:
+                newWall = Wall(place[0],place[1],mousePos[0]-place[0],mousePos[1]-place[1])
+                gameMap.append(newWall)
+                print('end')
+        
+        manageKeys(event)
 
     drawPlayer()
     drawMap()
