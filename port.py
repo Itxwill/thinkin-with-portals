@@ -4,7 +4,7 @@
 # Portals
 # Wall jump?
 
-
+import math
 import pygame as pyg
 
 pyg.init()
@@ -18,6 +18,8 @@ playerVel = [0,0]
 playerSize = 15
 playerSpeed= 1
 playerAir = True
+playerRot = 0
+playerMode = True # Blue or Orange
 
 gravityConstant = .1
 gameMap = []
@@ -70,7 +72,7 @@ def drawDebug():
         deco.draw()
 
 def drawPlayer():
-    global playerPos,playerVel,playerSize,playerAir
+    global playerPos,playerVel,playerSize,playerAir,playerRot,playerMode
 
     # Handles gravity
     if playerVel[1]<10:
@@ -90,8 +92,8 @@ def drawPlayer():
     if keys[2]:
         playerPos[0]+=playerSpeed
 
-
-
+    #Calclations
+    gunPos = [math.cos(playerRot)*25+playerPos[0],math.sin(playerRot)*25+playerPos[1]]
     predictedPos = [playerPos[0]+playerVel[0],playerPos[1]+playerVel[1]]
 
     #Block collisions
@@ -103,26 +105,27 @@ def drawPlayer():
             #+-
             if gridPos[0]>=0 and gridPos[1]<=0:
                 playerPos = [playerPos[0],block.top-playerSize] if gridPos[0]<=abs(gridPos[1]) else [block.left+block.width+playerSize,playerPos[1]]
-                playerAir = False
+                playerAir = False if gridPos[0]<=abs(gridPos[1]) else True
             #--
             if gridPos[0]<=0 and gridPos[1]<=0:
                 playerPos = [playerPos[0],block.top-playerSize] if abs(gridPos[0])<=abs(gridPos[1]) else [block.left-playerSize,playerPos[1]]
-                playerAir = False
+                playerAir = False if abs(gridPos[0])<=abs(gridPos[1]) else True
             
             #-+
             if gridPos[0]<=0 and gridPos[1]>=0:
                 playerPos = [playerPos[0],block.top+block.height+playerSize] if abs(gridPos[0])<=gridPos[1] else [block.left-playerSize,playerPos[1]]
-                playerAir = True if abs(gridPos[0])<=gridPos[1] else False
+                playerAir = True
             #++
             if gridPos[0]>=0 and gridPos[1]>=0:
                 playerPos = [playerPos[0],block.top+block.height+playerSize] if gridPos[0]<=gridPos[1] else [block.left+block.width+playerSize,playerPos[1]]
-                playerAir = True if gridPos[0]<=gridPos[1] else False
+                playerAir = True
 
     # Render the player
     pyg.draw.circle(screen, (255,255,255), playerPos, playerSize,width=1)
+    Line(playerPos,gunPos,width=4,color=[100,100,255]).draw() if playerMode else Line(playerPos,gunPos,width=4,color=(255,125,0)).draw()
 
-def manageKeys(event):
-    global playerPos,playerAir
+def manageKeys(event,mouseState):
+    global playerPos,playerAir,playerMode
     if event.type==pyg.KEYDOWN:
         if event.key == pyg.K_w:
             keys[0]=True
@@ -140,10 +143,16 @@ def manageKeys(event):
         if event.key == pyg.K_d:
             keys[2]=False
 
+    if mouseState[0]:
+        playerMode = not playerMode
+
 while True:
     screen.fill((0,0,0))
     mousePos = pyg.mouse.get_pos()
     mouseState = pyg.mouse.get_pressed()
+
+    playerRot = math.atan2(mousePos[1]-playerPos[1],mousePos[0]-playerPos[0])
+
 
     for event in pyg.event.get():
         if event.type == pyg.QUIT:
@@ -157,8 +166,7 @@ while True:
                 newWall = Wall(place[0],place[1],mousePos[0]-place[0],mousePos[1]-place[1])
                 gameMap.append(newWall)
 
-        
-        manageKeys(event)
+        manageKeys(event,mouseState)
 
     drawPlayer()
     drawMap()
